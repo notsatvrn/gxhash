@@ -21,6 +21,7 @@ bench-md = []
 bench-plot = []
 
 [dependencies]
+const-random = "0.1"
 rand_chacha = { version = "0.3", default_features = false }
 rand_core = "0.6"
 

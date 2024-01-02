@@ -136,9 +136,6 @@ impl Hasher for GxHasher {
 #[derive(Clone, Debug)]
 pub struct GxBuildHasher(State);
 
-#[cfg(not(entropy))]
-include!(concat!(env!("OUT_DIR"), "/seed.rs"));
-
 impl Default for GxBuildHasher {
     #[inline]
     fn default() -> GxBuildHasher {
@@ -146,7 +143,7 @@ impl Default for GxBuildHasher {
         #[cfg(entopy)]
         let mut rng = rand_chacha::ChaCha12Rng::from_entropy();
         #[cfg(not(entropy))]
-        let mut rng = rand_chacha::ChaCha12Rng::from_seed(SEED);
+        let mut rng = rand_chacha::ChaCha12Rng::from_seed(const_random::const_random!([u8; 32]));
         unsafe {
             let ptr = uninit.as_mut_ptr() as *mut u8;
             let slice = core::slice::from_raw_parts_mut(ptr, VECTOR_SIZE);
