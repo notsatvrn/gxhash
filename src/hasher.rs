@@ -140,9 +140,9 @@ impl Default for GxBuildHasher {
     #[inline]
     fn default() -> GxBuildHasher {
         let mut uninit: MaybeUninit<State> = MaybeUninit::uninit();
-        #[cfg(entopy)]
+        #[cfg(any(target_feature = "rdrand", feature = "std"))]
         let mut rng = rand_chacha::ChaCha12Rng::from_entropy();
-        #[cfg(not(entropy))]
+        #[cfg(not(any(target_feature = "rdrand", feature = "std")))]
         let mut rng = rand_chacha::ChaCha12Rng::from_seed(const_random::const_random!([u8; 32]));
         unsafe {
             let ptr = uninit.as_mut_ptr() as *mut u8;
