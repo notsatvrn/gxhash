@@ -4,7 +4,7 @@ use std::mem::MaybeUninit;
 
 use rand::RngCore;
 
-use crate::gxhash::platform::*;
+use crate::gxhash::aes::*;
 use crate::gxhash::*;
 
 /// A `Hasher` for hashing an arbitrary stream of bytes.
@@ -49,7 +49,7 @@ impl Default for GxHasher {
     /// ```
     #[inline]
     fn default() -> GxHasher {
-        GxHasher::with_state(unsafe { create_empty() })
+        GxHasher::with_state(unsafe { new() })
     }
 }
 
@@ -77,15 +77,13 @@ impl GxHasher {
     #[inline]
     pub fn with_seed(seed: i64) -> GxHasher {
         // Use gxhash64 to generate an initial state from a seed
-        GxHasher::with_state(unsafe { create_seed(seed) })
+        GxHasher::with_state(unsafe { load_i64(seed) })
     }
 
     /// Finish this hasher and return the hashed value as a 128 bit
     /// unsigned integer.
     #[inline]
     pub fn finish_u128(&self) -> u128 {
-        debug_assert!(std::mem::size_of::<State>() >= std::mem::size_of::<u128>());
-
         unsafe {
             let p = &finalize(self.state) as *const State as *const u128;
             *p
@@ -107,18 +105,10 @@ macro_rules! write {
 impl Hasher for GxHasher {
     #[inline]
     fn finish(&self) -> u64 {
-        unsafe {
-            let p = &finalize(self.state) as *const State as *const u64;
-            *p
-        }
+        self.finish_u128() as u64
     }
 
-    #[inline]
-    fn write(&mut self, bytes: &[u8]) {
-        // Improvement: only compress at this stage and finalize in finish
-        self.state = unsafe { aes_encrypt_last(compress_all(bytes), aes_encrypt(self.state, ld(KEYS.as_ptr()))) };
-    }
-
+    write!(write, &[u8], compress_all);
     write!(write_u8, u8, load_u8);
     write!(write_u16, u16, load_u16);
     write!(write_u32, u32, load_u32);
@@ -142,7 +132,7 @@ impl Default for GxBuildHasher {
         let mut rng = rand::thread_rng();
         unsafe {
             let ptr = uninit.as_mut_ptr() as *mut u8;
-            let slice = std::slice::from_raw_parts_mut(ptr, VECTOR_SIZE);
+            let slice = std::slice::from_raw_parts_mut(ptr, 16);
             rng.fill_bytes(slice);
             GxBuildHasher(uninit.assume_init())
         }
